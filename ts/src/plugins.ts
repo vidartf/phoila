@@ -26,7 +26,7 @@ import {
 
 import {
   OutputModel, OutputView, OUTPUT_WIDGET_VERSION
-} from '@jupyter-widgets/jupyterlab-manager/lib/output';
+} from './output';
 
 import { WidgetRenderer } from '@jupyter-widgets/jupyterlab-manager';
 

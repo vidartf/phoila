@@ -71,7 +71,7 @@ def add_voila_handlers(server_app):
 
     search_directories = None
     if DEV_MODE:
-        search_directories = [os.path.abspath(os.path.join(HERE, '..', 'share', 'jupyter', 'phoila', 'templates'))]
+        search_directories = [os.path.abspath(os.path.join(HERE, '..', 'share', 'jupyter', 'voila', 'templates'))]
 
     # common configuration options between the server extension and the application
     voila_configuration = VoilaConfiguration(parent=server_app)
