@@ -5,7 +5,7 @@
 [![codecov](https://codecov.io/gh/vidartf/phoila/branch/master/graph/badge.svg)](https://codecov.io/gh/vidartf/phoila)
 
 
-A Phosphor wrapper for Voila
+A Phosphor wrapper for Voila, hence the name Pho(sphor) + (V)oila.
 
 ## Installation
 
@@ -15,15 +15,14 @@ You can install using `pip`:
 pip install phoila
 ```
 
-Or if you use jupyterlab:
+Add any lab extensions you need to phoila:
 
 ```bash
-pip install phoila
-jupyter labextension install @jupyter-widgets/jupyterlab-manager
+phoila install <lab-extension name> [<lab-extension name> ...]
 ```
 
-If you are using Jupyter Notebook 5.2 or earlier, you may also need to enable
-the nbextension:
+Then run it:
+
 ```bash
-jupyter nbextension enable --py [--sys-prefix|--user|--system] phoila
+phoila
 ```

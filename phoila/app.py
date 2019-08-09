@@ -5,6 +5,7 @@ import sys
 from jupyter_core.application import JupyterApp
 from jupyterlab import labextensions, labapp
 from notebook.notebookapp import NotebookApp
+from traitlets import Unicode
 
 from ._version import __version__
 from .server_extension import _load_jupyter_server_extension
@@ -26,6 +27,10 @@ class PhoilaApp(NotebookApp):
     version = __version__
     description = "Work with Phoila JupyterLab extensions"
     examples = _examples
+
+    default_url = Unicode('/phoila', config=True,
+        help="The default URL to redirect to from `/`"
+    )
 
     subcommands = dict(
         install=(labextensions.InstallLabExtensionApp, "Install labextension(s)"),
