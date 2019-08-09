@@ -48,12 +48,13 @@ def load_config(nbapp):
     config.app_dir = app_dir
     config.app_name = 'Phoila'
     config.app_namespace = 'phoila'
+    config.app_settings_dir = os.path.join(app_dir, 'settings')
     config.cache_files = True
     config.schemas_dir = os.path.join(app_dir, 'schemas')
     config.templates_dir = os.path.join(app_dir, 'static')
     config.themes_dir = os.path.join(app_dir, 'themes')
-    config.workspaces_dir = os.path.join(app_dir, 'workspaces')
     config.user_settings_dir = user_settings_dir
+    config.workspaces_dir = os.path.join(app_dir, 'workspaces')
 
     if getattr(nbapp, 'override_static_url', ''):
         static_url = nbapp.override_static_url
@@ -74,7 +75,7 @@ def _load_jupyter_server_extension(nb_server_app):
             sys.prefix, 'share', 'jupyter', 'phoila')
     if 'JUPYTERLAB_SETTINGS_DIR' not in os.environ:
         os.environ['JUPYTERLAB_SETTINGS_DIR'] = os.path.join(
-            jupyter_config_path()[0], 'phoila', 'user-settings'
+            jupyter_config_path()[0], 'phoila', 'settings'
         )
     if 'JUPYTERLAB_WORKSPACES_DIR' not in os.environ:
         os.environ['JUPYTERLAB_WORKSPACES_DIR'] = os.path.join(

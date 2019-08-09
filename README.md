@@ -9,10 +9,10 @@ A Phosphor wrapper for Voila, hence the name Pho(sphor) + (V)oila.
 
 ## Installation
 
-You can install using `pip`:
+Download the source code (as zip, or by cloning). Go into the directory with a terminal and run:
 
 ```bash
-pip install phoila
+pip install .
 ```
 
 Add any lab extensions you need to phoila:
