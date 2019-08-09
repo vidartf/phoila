@@ -4,6 +4,7 @@ include README.md
 include setupbase.py
 include pytest.ini
 include .coverage.rc
+include MANIFEST.in
 
 include package.json
 include webpack.config.js
@@ -15,6 +16,9 @@ exclude docs/\#*
 prune docs/build
 prune docs/gh-pages
 prune docs/dist
+
+# Templates and config
+graft share
 
 # Examples
 graft examples

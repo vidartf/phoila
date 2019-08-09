@@ -28,25 +28,23 @@ ensure_python('>=3.5')
 version = get_version(pjoin(name, '_version.py'))
 
 js_path = pjoin(HERE, 'ts')
-js_path = pjoin(HERE, ts, 'lab-dist')
+lab_path = pjoin(HERE, 'ts', 'dist')
 
 # Representative files that should exist after a successful build
 jstargets = [
-    pjoin(nb_path, 'index.js'),
-    pjoin(js_path, 'lib', 'plugin.js'),
-    pjoin(js_path, 'lab-dist', 'phoila.tar.gz')
+    pjoin(js_path, 'lib', 'plugins.js'),
 ]
 
 package_data_spec = {
     name: [
-        'nbextension/static/*.*js*',
-        'labextension/*.tgz'
+        'staging/*.*'
     ]
 }
 
 data_files_spec = [
+    ('', HERE, 'etc/**/*'),
     ('share/jupyter/phoila/extensions', lab_path, '*.tgz'),
-    ('share' , HERE, 'share/**/*')
+    ('' , HERE, 'share/**/*')
 ]
 
 
@@ -87,6 +85,7 @@ setup_args = dict(
     install_requires = [
         'voila',
         'ipywidgets>=7.0.0',
+        'jupyterlab>=1.0.4',
     ],
     extras_require = {
         'test': [
