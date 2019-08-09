@@ -28,15 +28,10 @@
     "url": "https://github.com/vidartf/phoila"
   },
   "scripts": {
-    "build": "npm run build:lib && npm run build:nbextension",
-    "build:labextension": "npm run clean:labextension && mkdirp lab-dist && cd lab-dist && npm pack ../..",
+    "build": "npm run build:lib",
     "build:lib": "tsc",
-    "build:nbextension": "webpack -p",
-    "build:all": "npm run build:labextension && npm run build:nbextension",
-    "clean": "npm run clean:lib && npm run clean:nbextension",
+    "clean": "npm run clean:lib",
     "clean:lib": "rimraf lib",
-    "clean:labextension": "rimraf lab-dist",
-    "clean:nbextension": "rimraf ../phoila/nbextension/static/index.js",
     "prepack": "npm run build:lib",
     "test": "npm run test:firefox",
     "test:chrome": "karma start --browsers=Chrome tests/karma.conf.js",
@@ -48,7 +43,10 @@
     "watch:nbextension": "webpack --watch"
   },
   "dependencies": {
-    "@jupyter-widgets/base": "^2.0.1"
+    "@jupyterlab/application": "^1.0.2",
+    "@jupyterlab/rendermime": "^1.0.2",
+    "@jupyter-widgets/base": "^2.0.1",
+    "@jupyter-widgets/jupyterlab-manager": "^1.0.2"
   },
   "devDependencies": {
     "@phosphor/application": "^1.6.0",
@@ -75,8 +73,5 @@
     "typescript": "~3.5.3",
     "webpack": "^4.39.1",
     "webpack-cli": "^3.3.6"
-  },
-  "jupyterlab": {
-    "extension": "lib/plugin"
   }
 }
