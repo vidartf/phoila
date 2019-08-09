@@ -18,7 +18,7 @@ import {
 } from '@phosphor/widgets';
 
 import {
-  IRenderMimeRegistry, IRenderMime
+  IRenderMimeRegistry
 } from '@jupyterlab/rendermime';
 
 import {

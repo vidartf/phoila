@@ -7,48 +7,63 @@ This module contains code for opening a new voila view.
 
 */
 
-import { JupyterFrontEnd } from '@jupyterlab/application';
-
-import { ICommandPalette } from '@jupyterlab/apputils';
-
-import {
-  IRenderMimeRegistry
-} from '@jupyterlab/rendermime';
-
-import { WidgetRenderer } from '@jupyter-widgets/jupyterlab-manager';
+import { JupyterFrontEnd, ILayoutRestorer } from '@jupyterlab/application';
+import { ICommandPalette, WidgetTracker } from '@jupyterlab/apputils';
+import { IRenderMimeRegistry } from "@jupyterlab/rendermime";
 
 import * as base from '@jupyter-widgets/base';
-
-export { connectKernel } from './kernel';
-
-import { WidgetManager } from './widget-manager';
+import { WidgetRenderer } from '@jupyter-widgets/jupyterlab-manager';
 
 import { TPhoilaWidgetRegistry, TVoilaTracker } from './tokens';
+
+import { WidgetRegistry } from './registry';
+import { VoilaView } from './widget';
 
 
 const WIDGET_VIEW_MIMETYPE = 'application/vnd.jupyter.widget-view+json';
 
 
+const WIDGET_REGISTRY = new WidgetRegistry();
 
 const voilaViewPlugin = {
   id: 'phoila:voila-view',
-  requires: [],
-  optional: [ICommandPalette],
+  requires: [IRenderMimeRegistry],
+  optional: [ICommandPalette, ILayoutRestorer],
   provides: TVoilaTracker,
-  activate: (app: JupyterFrontEnd, palette: ICommandPalette | null) => {
-    const {commands} = app;
+  activate: (
+    app: JupyterFrontEnd,
+    rendermime: IRenderMimeRegistry,
+    palette: ICommandPalette | null,
+    restorer: ILayoutRestorer | null
+  ) => {
+    const { commands, shell } = app;
+    const tracker = new WidgetTracker<VoilaView>({namespace: 'phoila'});
     commands.addCommand(
       'phoila:open-new', {
         execute: args => {
           const path = args['path'];
           if (!path) {
             throw new Error('Phoila: No path given to open');
+          } else if (typeof path !== 'string') {
+            throw new Error('Phoila: Path not a string')
           }
 
           // Open voila widget
+          const view = new VoilaView(path, WIDGET_REGISTRY, rendermime);
+          shell.add(view);
+          tracker.add(view);
         }
       }
     );
+    if (restorer) {
+      restorer.restore(tracker, {
+        command: 'phoila:open-new',
+        args: view => ({
+          path: view.notebookPath,
+        }),
+        name: (view) => view.notebookPath,
+      });
+    }
 
     if (palette) {
       palette.addItem({
@@ -56,6 +71,8 @@ const voilaViewPlugin = {
         category: 'Voila',
       });
     }
+
+    return tracker;
   },
   autoStart: true
 };
@@ -70,28 +87,21 @@ const phoilaWidgetManagerPlugin = {
   provides: TPhoilaWidgetRegistry,
   activate: (app: JupyterFrontEnd, rendermime: IRenderMimeRegistry) => {
 
-    const wManager = new WidgetManager(kernel, rendermime);
-
     // Add a placeholder widget renderer.
     rendermime.addFactory({
       safe: false,
       mimeTypes: [WIDGET_VIEW_MIMETYPE],
-      createRenderer: options => new WidgetRenderer(options, wManager)
+      createRenderer: options => new WidgetRenderer(options)
     }, 0);
 
-    wManager.restored.connect(() => {
-      managerPromise.resolve(wManager);
-    });
-
     return {
-      registerWidget(data) {
-        wManager.register(data);
+      registerWidget(data: base.IWidgetRegistryData) {
+        WIDGET_REGISTRY.register(data);
       }
     };
   },
   autoStart: true
 };
-
 
 /**
  * The widget manager provider.

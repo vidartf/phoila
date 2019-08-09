@@ -34,7 +34,8 @@ interface TPhoilaWidgetRegistry {
 /**
  * A class that tracks voila widgets.
  */
-export interface TVoilaTracker extends IWidgetTracker<VoilaView> {}
+export interface TVoilaTracker extends IWidgetTracker<VoilaView> {
+}
 
 /* tslint:disable */
 /**

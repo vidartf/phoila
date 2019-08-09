@@ -46,7 +46,8 @@
     "@jupyterlab/application": "^1.0.2",
     "@jupyterlab/rendermime": "^1.0.2",
     "@jupyter-widgets/base": "^2.0.1",
-    "@jupyter-widgets/jupyterlab-manager": "^1.0.2"
+    "@jupyter-widgets/jupyterlab-manager": "^1.0.2",
+    "semver": "^6.3.0"
   },
   "devDependencies": {
     "@phosphor/application": "^1.6.0",

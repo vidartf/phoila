@@ -1,16 +1,15 @@
 
 
-import { WidgetTracker } from '@jupyterlab/apputils'
-
 import { OutputArea, OutputAreaModel } from '@jupyterlab/outputarea';
 import { IRenderMimeRegistry } from "@jupyterlab/rendermime";
 import { WidgetRenderer } from '@jupyter-widgets/jupyterlab-manager';
-import { iter } from '@phosphor/algorithm';
+
+import { each, iter, toArray } from '@phosphor/algorithm';
 import { ReadonlyJSONValue } from "@phosphor/coreutils";
 import { MessageLoop } from '@phosphor/messaging';
 import { Widget, Layout, PanelLayout } from "@phosphor/widgets";
 
-
+import { WidgetRegistry } from './registry';
 import { connectKernel, requestVoila } from './voila';
 import { WidgetManager } from './widget-manager';
 
@@ -18,8 +17,8 @@ import { WidgetManager } from './widget-manager';
 const WIDGET_VIEW_MIMETYPE = 'application/vnd.jupyter.widget-view+json';
 
 
-class ReplaceLayout extends Layout {
-  replaceNode(target: HTMLElement, widget: Widget) {
+class ReplaceLayout<T extends Widget> extends Layout {
+  replaceNode(target: HTMLElement, widget: T) {
     this._widgets.push(widget);
 
     // Send a `'before-attach'` message if the parent is attached.
@@ -36,7 +35,7 @@ class ReplaceLayout extends Layout {
     }
   }
 
-  removeWidget(widget: Widget): void {
+  removeWidget(widget: T): void {
     this._widgets.splice(this._widgets.indexOf(widget), 1);
 
     // Send a `'before-detach'` message if the parent is attached.
@@ -62,7 +61,7 @@ class ReplaceLayout extends Layout {
     return iter(this._widgets);
   }
 
-  _widgets: Widget[] = [];
+  _widgets: T[] = [];
 }
 
 export class VoilaOutputWidget extends Widget {
@@ -71,8 +70,8 @@ export class VoilaOutputWidget extends Widget {
     this.layout = new ReplaceLayout();
   }
 
-  replaceWidgetOutputs(root: Widget, rendermime: IRenderMimeRegistry) {
-    const rootNode = root.node;
+  replaceWidgetOutputs(rendermime: IRenderMimeRegistry) {
+    const rootNode = this.node;
     const outputs = rootNode.querySelectorAll(
       'script[type="application/x.voila-lab-output+json"]'
     );
@@ -103,7 +102,19 @@ export class VoilaOutputWidget extends Widget {
     }
   }
 
-  layout: ReplaceLayout;
+  *renderers() {
+    for (const outputArea of toArray(this.layout)) {
+      for (const codecell of outputArea.widgets) {
+        for (const output of toArray(codecell.children())) {
+          if (output instanceof WidgetRenderer) {
+            yield output;
+          }
+        }
+      }
+    }
+  }
+
+  layout: ReplaceLayout<OutputArea>;
 }
 
 
@@ -111,11 +122,17 @@ export class VoilaView extends Widget {
   /**
    *
    */
-  constructor(notebookPath: string, rendermime: IRenderMimeRegistry) {
+  constructor(
+    notebookPath: string,
+    registry: WidgetRegistry,
+    rendermime: IRenderMimeRegistry
+  ) {
     super();
     this.layout = new PanelLayout();
+    this.notebookPath = notebookPath;
     this.populateFromPath(notebookPath);
     this.rendermime = rendermime.clone();
+    this.registry = registry;
   }
 
   async populateFromPath(path: string) {
@@ -139,6 +156,7 @@ export class VoilaView extends Widget {
     const { kernelId } = header;
     const kernel = await connectKernel(kernelId);
     const wManager = new WidgetManager(kernel, this.rendermime);
+    this.registry.data.forEach(data => wManager.register(data));
     // Replace the placeholder widget renderer with one bound to this widget
     // manager.
     this.rendermime.removeMimeType(WIDGET_VIEW_MIMETYPE);
@@ -149,21 +167,27 @@ export class VoilaView extends Widget {
         createRenderer: (options) => new WidgetRenderer(
           options, wManager as any)
       }, 0);
+    each(this.layout, (widget) => {
+      for (const renderer of (widget as VoilaOutputWidget).renderers()) {
+        renderer.manager = wManager as any;
+      }
+    });
   }
 
   addEntry(entry: VoilaView.EntryData): void {
     const view = new VoilaOutputWidget();
     view.node.innerHTML = entry.source;
     this.layout.addWidget(view);
-    VoilaView.voilaTracker.add(view);
+    view.replaceWidgetOutputs(this.rendermime);
   }
 
   layout: PanelLayout;
+  readonly notebookPath: string;
   readonly rendermime: IRenderMimeRegistry;
+  protected readonly registry: WidgetRegistry;
 }
 
 export namespace VoilaView {
-  export const voilaTracker = new WidgetTracker<VoilaOutputWidget>({namespace: 'phoila'});
 
   export type HeaderData = { kernelId: string };
 
