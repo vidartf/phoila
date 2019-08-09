@@ -69,21 +69,27 @@ def add_voila_handlers(server_app):
     static_paths = [STATIC_ROOT]
     template_paths = []
 
-    search_directories = None
-    if DEV_MODE:
-        search_directories = [os.path.abspath(os.path.join(HERE, '..', 'share', 'jupyter', 'voila', 'templates'))]
-
     # common configuration options between the server extension and the application
     voila_configuration = VoilaConfiguration(parent=server_app)
     voila_configuration.template = 'phoila'
     voila_configuration.enable_nbextensions = False
-    collect_template_paths(
-        nbconvert_template_paths,
-        static_paths,
-        template_paths,
-        voila_configuration.template,
-        search_directories
-    )
+
+    if DEV_MODE:
+        search_directories = [os.path.abspath(os.path.join(HERE, '..', 'share', 'jupyter', 'voila', 'templates'))]
+        collect_template_paths(
+            nbconvert_template_paths,
+            static_paths,
+            template_paths,
+            voila_configuration.template,
+            search_directories
+        )
+    else:
+        collect_template_paths(
+            nbconvert_template_paths,
+            static_paths,
+            template_paths,
+            voila_configuration.template
+        )
 
     jenv_opt = {"autoescape": True}
     env = Environment(loader=FileSystemLoader(template_paths), extensions=['jinja2.ext.i18n'], **jenv_opt)
