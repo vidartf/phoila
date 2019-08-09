@@ -11,9 +11,19 @@ from jupyterlab.commands import (
     get_app_dir,
     get_app_info,
     get_user_settings_dir,
+    get_workspaces_dir,
 )
-from jupyterlab_server.handlers import LabHandler, is_url, ThemesHandler
-from jupyterlab_server.server import  url_path_join as ujoin, FileFindHandler
+from jupyterlab_server.handlers import (
+    is_url,
+    LabConfig,
+    LabHandler,
+    ThemesHandler,
+)
+from jupyterlab_server.server import (
+    FileFindHandler,
+    url_path_join as ujoin,
+)
+from jupyterlab_server.workspaces_handler import WorkspacesHandler
 from jupyterlab_server.settings_handler import SettingsHandler
 from voila.paths import notebook_path_regex
 
@@ -21,78 +31,19 @@ from ._version import __version__
 
 HERE = os.path.dirname(__file__)
 
-class PhoilaConfig(HasTraits):
-    """The application configuration object.
-    """
-    app_name = Unicode('', help='The name of the application.')
-
-    app_version = Unicode('', help='The version of the application.')
-
-    app_namespace = Unicode('', help='The namespace of the application.')
-
-    app_url = Unicode('phoila', help='The url path for the application.')
-
-    app_settings_dir = Unicode('', help='The application settings directory.')
-
-    templates_dir = Unicode('', help='The application templates directory.')
-
-    static_dir = Unicode('',
-                         help=('The optional location of local static files. '
-                               'If given, a static file handler will be '
-                               'added.'))
-
-    static_url = Unicode(help=('The url path for static application '
-                               'assets. This can be a CDN if desired.'))
-
-    settings_url = Unicode(help='The url path of the settings handler.')
-
-    user_settings_dir = Unicode('',
-                                help=('The optional location of the user '
-                                      'settings directory.'))
-
-    schemas_dir = Unicode('',
-                          help=('The optional location of the settings '
-                                'schemas directory. If given, a handler will '
-                                'be added for settings.'))
-
-    themes_url = Unicode(help='The theme url.')
-
-    themes_dir = Unicode('',
-                         help=('The optional location of the themes '
-                               'directory. If given, a handler will be added '
-                               'for themes.'))
-
-    tree_url = Unicode(help='The url path of the tree handler.')
-
-    cache_files = Bool(True,
-                       help=('Whether to cache files on the server. '
-                             'This should be `True` except in dev mode.'))
-
-    @default('static_url')
-    def _default_static_url(self):
-        return ujoin('static', self.app_url)
-
-    @default('settings_url')
-    def _default_settings_url(self):
-        return ujoin(self.app_url, 'api', 'settings/')
-
-    @default('themes_url')
-    def _default_themes_url(self):
-        return ujoin(self.app_url, 'api', 'themes/')
-
-    @default('tree_url')
-    def _default_tree_url(self):
-        return '/voila/tree/'
-
 
 def load_config(nbapp):
-    config = PhoilaConfig()
+    config = LabConfig(
+        app_url='/phoila',
+        tree_url='/voila/tree'
+    )
     app_dir = getattr(nbapp, 'app_dir', get_app_dir())
     info = get_app_info(app_dir)
     static_url = info['staticUrl']
     user_settings_dir = getattr(
         nbapp, 'user_settings_dir', get_user_settings_dir()
     )
+    workspaces_dir = getattr(nbapp, 'workspaces_dir', get_workspaces_dir())
 
     config.app_dir = app_dir
     config.app_name = 'Phoila'
@@ -101,6 +52,7 @@ def load_config(nbapp):
     config.schemas_dir = os.path.join(app_dir, 'schemas')
     config.templates_dir = os.path.join(app_dir, 'static')
     config.themes_dir = os.path.join(app_dir, 'themes')
+    config.workspaces_dir = os.path.join(app_dir, 'workspaces')
     config.user_settings_dir = user_settings_dir
 
     if getattr(nbapp, 'override_static_url', ''):
@@ -123,6 +75,10 @@ def _load_jupyter_server_extension(nb_server_app):
     if 'JUPYTERLAB_SETTINGS_DIR' not in os.environ:
         os.environ['JUPYTERLAB_SETTINGS_DIR'] = os.path.join(
             jupyter_config_path()[0], 'phoila', 'user-settings'
+        )
+    if 'JUPYTERLAB_WORKSPACES_DIR' not in os.environ:
+        os.environ['JUPYTERLAB_WORKSPACES_DIR'] = os.path.join(
+            jupyter_config_path()[0], 'phoila', 'workspaces'
         )
     config = load_config(nb_server_app)
     return add_handlers(nb_server_app.web_app, config)
@@ -187,6 +143,28 @@ def add_handlers(web_app, config):
         setting_path = ujoin(
             base_url, config.settings_url, '(?P<schema_name>.+)')
         handlers.append((setting_path, SettingsHandler, settings_config))
+
+    # Handle saved workspaces.
+    if config.workspaces_dir:
+        # Handle JupyterLab client URLs that include workspaces.
+        workspaces_path = ujoin(base_url, config.workspaces_url, r'.+')
+        handlers.append((workspaces_path, LabHandler, {'lab_config': config}))
+
+        workspaces_config = {
+            'workspaces_url': config.workspaces_url,
+            'path': config.workspaces_dir
+        }
+
+        # Handle requests for the list of workspaces. Make slash optional.
+        workspaces_api_path = ujoin(base_url, config.workspaces_api_url, '?')
+        handlers.append((
+            workspaces_api_path, WorkspacesHandler, workspaces_config))
+
+        # Handle requests for an individually named workspace.
+        workspace_api_path = ujoin(
+            base_url, config.workspaces_api_url, '(?P<space_name>.+)')
+        handlers.append((
+            workspace_api_path, WorkspacesHandler, workspaces_config))
 
     # Handle local themes.
     if config.themes_dir:

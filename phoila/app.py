@@ -4,8 +4,11 @@ import sys
 
 from jupyter_core.application import JupyterApp
 from jupyterlab import labextensions, labapp
+from notebook.notebookapp import NotebookApp
 
 from ._version import __version__
+from .server_extension import _load_jupyter_server_extension
+from .voila_handlers import add_voila_handlers
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 
@@ -17,7 +20,7 @@ phoila <extension name>    # install a labextension
 phoila <extension name>  # uninstall a labextension
 """
 
-class PhoilaApp(JupyterApp):
+class PhoilaApp(NotebookApp):
     """Base jupyter labextension command entry point"""
     name = "phoila"
     version = __version__
@@ -38,14 +41,27 @@ class PhoilaApp(JupyterApp):
         clean=(labapp.LabCleanApp, labapp.LabCleanApp.description.splitlines()[0]),
     )
 
-    def start(self):
-        """Perform the App's functions as configured"""
-        super(PhoilaApp, self).start()
+    def init_server_extensions(self):
+        """Load any extensions specified by config.
 
-        # The above should have called a subcommand and raised NoStart; if we
-        # get here, it didn't, so we should self.log.info a message.
-        subcmds = ", ".join(sorted(self.subcommands))
-        self.exit("Please supply at least one subcommand: %s" % subcmds)
+        Import the module, then call the load_jupyter_server_extension function,
+        if one exists.
+
+        If the phoila server extension is not enabled, it will
+        be manually loaded with a warning.
+
+        The extension API is experimental, and may change in future releases.
+        """
+        # Don't load the voila server extension if it is enabled
+        # we will add our own voila handlers
+        if self.nbserver_extensions.get('voila', False):
+            self.nbserver_extensions['voila'] = False
+        super(PhoilaApp, self).init_server_extensions()
+        add_voila_handlers(self)
+        msg = 'phoila server extension not enabled, manually loading...'
+        if not self.nbserver_extensions.get('phoila', False):
+            self.log.warn(msg)
+            _load_jupyter_server_extension(self)
 
 
 def _get_core_data_patched():

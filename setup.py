@@ -111,7 +111,7 @@ setup_args = dict(
         ],
     },
     entry_points = {'console_scripts': [
-        'phoila = phoila.extensionapp:main',
+        'phoila = phoila.app:main',
     ]},
 )
 

@@ -117,7 +117,9 @@ export function parseJSON(input: ReadableStream<string>) {
           break;
         }
 
-        controller.enqueue(JSON.parse(value));
+        if (value.trim().length > 0) {
+          controller.enqueue(JSON.parse(value));
+        }
       }
 
       // Close the stream

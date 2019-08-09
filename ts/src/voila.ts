@@ -33,7 +33,7 @@ export async function* requestVoila(path: string, baseUrl?: string): AsyncIterab
   baseUrl = baseUrl || PageConfig.getBaseUrl();
   const settings = ServerConnection.makeSettings({ baseUrl });
   const response = await ServerConnection.makeRequest(
-    URLExt.join('voila', 'render', path), {}, settings);
+    URLExt.join(baseUrl, 'voila', 'render', path), {}, settings);
 
   if (!response.ok) {
     throw new Error(`${response.status} (${response.statusText})`);
