@@ -28,10 +28,12 @@
     "url": "https://github.com/vidartf/phoila"
   },
   "scripts": {
-    "build": "npm run build:lib",
+    "build": "npm run build:lib && npm run build:labext",
     "build:lib": "tsc",
-    "clean": "npm run clean:lib",
+    "build:labext": "npm run clean:labext && mkdirp lab-dist && cd lab-dist && npm pack ..",
+    "clean": "npm run clean:lib && npm run clean:labext",
     "clean:lib": "rimraf lib",
+    "clean:labext": "rimraf lab-dist",
     "prepack": "npm run build:lib",
     "test": "npm run test:firefox",
     "test:chrome": "karma start --browsers=Chrome tests/karma.conf.js",

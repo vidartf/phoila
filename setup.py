@@ -22,19 +22,19 @@ from setuptools import setup
 name = 'phoila'
 
 # Ensure a valid python version
-ensure_python('>=3.4')
+ensure_python('>=3.5')
 
 # Get our version
 version = get_version(pjoin(name, '_version.py'))
 
-nb_path = pjoin(HERE, name, 'nbextension', 'static')
 js_path = pjoin(HERE, 'ts')
-lab_path = pjoin(HERE, name, 'labextension')
+js_path = pjoin(HERE, ts, 'lab-dist')
 
 # Representative files that should exist after a successful build
 jstargets = [
     pjoin(nb_path, 'index.js'),
     pjoin(js_path, 'lib', 'plugin.js'),
+    pjoin(js_path, 'lab-dist', 'phoila.tar.gz')
 ]
 
 package_data_spec = {
@@ -45,10 +45,8 @@ package_data_spec = {
 }
 
 data_files_spec = [
-    ('share/jupyter/nbextensions/phoila',
-        nb_path, '*.js*'),
-    ('share/jupyter/lab/extensions', lab_path, '*.tgz'),
-    ('etc/jupyter/nbconfig/notebook.d' , HERE, 'phoila.json')
+    ('share/jupyter/phoila/extensions', lab_path, '*.tgz'),
+    ('share' , HERE, 'share/**/*')
 ]
 
 
