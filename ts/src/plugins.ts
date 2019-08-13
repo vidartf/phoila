@@ -35,6 +35,8 @@ import { TPhoilaWidgetRegistry, TVoilaTracker } from './tokens';
 import { WidgetRegistry } from './registry';
 import { VoilaView } from './widget';
 
+import "../style/index.css";
+
 
 const WIDGET_VIEW_MIMETYPE = 'application/vnd.jupyter.widget-view+json';
 
@@ -117,6 +119,8 @@ const voilaViewPlugin = {
             const view = new VoilaView(nbPath, WIDGET_REGISTRY, rendermime);
             view.id = DOMUtils.createDomID();
             view.title.label = nbPath;
+            view.title.closable = true;
+            view.title.iconClass = 'jp-VoilaIcon';
             shell.add(view);
             tracker.add(view);
           });

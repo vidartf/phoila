@@ -16,6 +16,8 @@ import { WidgetManager } from './widget-manager';
 
 const WIDGET_VIEW_MIMETYPE = 'application/vnd.jupyter.widget-view+json';
 
+const VOILA_VIEW_CLASS = 'voila-viewWidget';
+
 
 class ReplaceLayout<T extends Widget> extends Layout {
   replaceNode(target: HTMLElement, widget: T) {
@@ -133,6 +135,7 @@ export class VoilaView extends Widget {
     this.populateFromPath(notebookPath);
     this.rendermime = rendermime.clone();
     this.registry = registry;
+    this.addClass(VOILA_VIEW_CLASS);
   }
 
   async populateFromPath(path: string) {

@@ -9,7 +9,8 @@
     "widgets"
   ],
   "files": [
-    "lib/**/*.js",
+    "lib/**/*.{js,d.ts,js.map}",
+    "style/**/*.{css,eot,gif,html,jpg,json,png,svg,woff2,ttf}",
     "dist/*.js"
   ],
   "homepage": "https://github.com/vidartf/phoila",
