@@ -25,7 +25,6 @@ import {
   Kernel, KernelMessage
 } from '@jupyterlab/services';
 
-
 import {
   ISignal, Signal
 } from '@phosphor/signaling';
@@ -43,12 +42,10 @@ import {
 } from '@jupyter-widgets/jupyterlab-manager/lib/manager';
 
 
-
 /**
  * A widget manager that returns phosphor widgets.
  */
-export
-class WidgetManager extends ManagerBase<Widget> implements IDisposable {
+export class WidgetManager extends ManagerBase<Widget> implements IDisposable {
   constructor(kernel: Kernel.IKernel, rendermime: IRenderMimeRegistry) {
     super();
     this._kernel = kernel;
