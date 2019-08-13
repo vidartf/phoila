@@ -3,7 +3,7 @@ import os
 import sys
 
 from jupyter_core.application import JupyterApp
-from jupyterlab import labextensions, labapp
+from jupyterlab import labapp
 from notebook.notebookapp import NotebookApp
 from traitlets import Unicode
 
@@ -11,14 +11,16 @@ from ._version import __version__
 from .server_extension import _load_jupyter_server_extension
 from .voila_handlers import add_voila_handlers
 
+from .commands import *
+
 HERE = os.path.abspath(os.path.dirname(__file__))
 
 
 _examples = """
 phoila build                       # build bundle
-phoila list                        # list all configured labextensions
-phoila <extension name>    # install a labextension
-phoila <extension name>  # uninstall a labextension
+phoila list                        # list all configured extensions
+phoila install <extension name>    # install an extension
+phoila uninstall <extension name>  # uninstall an extension
 """
 
 class PhoilaApp(NotebookApp):
@@ -33,17 +35,17 @@ class PhoilaApp(NotebookApp):
     )
 
     subcommands = dict(
-        install=(labextensions.InstallLabExtensionApp, "Install labextension(s)"),
-        update=(labextensions.UpdateLabExtensionApp, "Update labextension(s)"),
-        uninstall=(labextensions.UninstallLabExtensionApp, "Uninstall labextension(s)"),
-        list=(labextensions.ListLabExtensionsApp, "List labextensions"),
-        link=(labextensions.LinkLabExtensionApp, "Link labextension(s)"),
-        unlink=(labextensions.UnlinkLabExtensionApp, "Unlink labextension(s)"),
-        enable=(labextensions.EnableLabExtensionsApp, "Enable labextension(s)"),
-        disable=(labextensions.DisableLabExtensionsApp, "Disable labextension(s)"),
-        check=(labextensions.CheckLabExtensionsApp, "Check labextension(s)"),
-        build=(labapp.LabBuildApp, labapp.LabBuildApp.description.splitlines()[0]),
-        clean=(labapp.LabCleanApp, labapp.LabCleanApp.description.splitlines()[0]),
+        install=(InstallPhoilaExtensionApp, "Install phoila extension(s)"),
+        update=(UpdatePhoilaExtensionApp, "Update phoila extension(s)"),
+        uninstall=(UninstallPhoilaExtensionApp, "Uninstall phoila extension(s)"),
+        list=(ListLPhoilaxtensionsApp, "List phoila extensions"),
+        link=(LinkPhoilaExtensionApp, "Link phoila extension(s)"),
+        unlink=(UnlinkPhoilaExtensionApp, "Unlink phoila extension(s)"),
+        enable=(EnableLPhoilaxtensionsApp, "Enable phoila extension(s)"),
+        disable=(DisableLPhoilaxtensionsApp, "Disable phoila extension(s)"),
+        check=(CheckLPhoilaxtensionsApp, "Check phoila extension(s)"),
+        build=(PhoilaBuildApp, labapp.LabBuildApp.description.splitlines()[0]),
+        clean=(PhoilaCleanApp, labapp.LabCleanApp.description.splitlines()[0]),
     )
 
     def init_server_extensions(self):
@@ -84,7 +86,6 @@ def main():
     # TODO: Make this an extension point in lab itself
     import jupyterlab.commands as commands
     commands._get_core_data = _get_core_data_patched
-
 
     PhoilaApp.launch_instance()
 

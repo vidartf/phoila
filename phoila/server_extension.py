@@ -7,12 +7,7 @@ import sys
 import tornado.web
 from traitlets import HasTraits, Bool, Unicode, default
 from jupyter_core.paths import jupyter_config_path
-from jupyterlab.commands import (
-    get_app_dir,
-    get_app_info,
-    get_user_settings_dir,
-    get_workspaces_dir,
-)
+from jupyterlab.commands import get_app_info
 from jupyterlab_server.handlers import (
     is_url,
     LabConfig,
@@ -28,8 +23,22 @@ from jupyterlab_server.settings_handler import SettingsHandler
 from voila.paths import notebook_path_regex
 
 from ._version import __version__
+from .app_config import (
+    get_app_dir,
+    get_user_settings_dir,
+    get_workspaces_dir,
+    pjoin,
+)
+from .commands import APP_DIR_DEFAULT
 
 HERE = os.path.dirname(__file__)
+
+USER_SETTINGS_DIR_DEFAULT = pjoin(
+    jupyter_config_path()[0], 'phoila', 'user-settings'
+)
+WORKSPACES_DIR_DEFAULT = pjoin(
+    jupyter_config_path()[0], 'phoila', 'user-settings'
+)
 
 
 def load_config(nbapp):
@@ -37,13 +46,14 @@ def load_config(nbapp):
         app_url='/phoila',
         tree_url='/voila/tree'
     )
-    app_dir = getattr(nbapp, 'app_dir', get_app_dir())
+    app_dir = getattr(nbapp, 'app_dir', get_app_dir(default=APP_DIR_DEFAULT))
+
     info = get_app_info(app_dir)
     static_url = info['staticUrl']
     user_settings_dir = getattr(
-        nbapp, 'user_settings_dir', get_user_settings_dir()
+        nbapp, 'user_settings_dir', get_user_settings_dir(default=USER_SETTINGS_DIR_DEFAULT)
     )
-    workspaces_dir = getattr(nbapp, 'workspaces_dir', get_workspaces_dir())
+    workspaces_dir = getattr(nbapp, 'workspaces_dir', get_workspaces_dir(default=WORKSPACES_DIR_DEFAULT))
 
     config.app_dir = app_dir
     config.app_name = 'Phoila'
