@@ -37,7 +37,7 @@ USER_SETTINGS_DIR_DEFAULT = pjoin(
     jupyter_config_path()[0], 'phoila', 'user-settings'
 )
 WORKSPACES_DIR_DEFAULT = pjoin(
-    jupyter_config_path()[0], 'phoila', 'user-settings'
+    jupyter_config_path()[0], 'phoila', 'workspaces'
 )
 
 
@@ -64,7 +64,7 @@ def load_config(nbapp):
     config.templates_dir = os.path.join(app_dir, 'static')
     config.themes_dir = os.path.join(app_dir, 'themes')
     config.user_settings_dir = user_settings_dir
-    config.workspaces_dir = os.path.join(app_dir, 'workspaces')
+    config.workspaces_dir = workspaces_dir
 
     if getattr(nbapp, 'override_static_url', ''):
         static_url = nbapp.override_static_url
