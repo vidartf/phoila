@@ -25,6 +25,8 @@ Add any lab extensions you need to phoila:
 phoila install <lab-extension name> [<lab-extension name> ...]
 ```
 
+(if you don't need any eextensions, make sure to run `phoila build` instead)
+
 Then run it:
 
 ```bash
