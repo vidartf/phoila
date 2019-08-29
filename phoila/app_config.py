@@ -50,9 +50,11 @@ def pjoin(*args):
 def get_user_settings_dir(default=None):
     """Get the configured JupyterLab user settings directory.
     """
-    settings_dir = os.environ.get('JUPYTERLAB_SETTINGS_DIR')
-    settings_dir = settings_dir or default or pjoin(
-        jupyter_config_path()[0], 'lab', 'user-settings'
+    settings_dir = os.environ.get("JUPYTERLAB_SETTINGS_DIR")
+    settings_dir = (
+        settings_dir
+        or default
+        or pjoin(jupyter_config_path()[0], "lab", "user-settings")
     )
     return osp.realpath(settings_dir)
 
@@ -60,9 +62,11 @@ def get_user_settings_dir(default=None):
 def get_workspaces_dir(default=None):
     """Get the configured JupyterLab workspaces directory.
     """
-    workspaces_dir = os.environ.get('JUPYTERLAB_WORKSPACES_DIR')
-    workspaces_dir = workspaces_dir or default or pjoin(
-        jupyter_config_path()[0], 'lab', 'workspaces'
+    workspaces_dir = os.environ.get("JUPYTERLAB_WORKSPACES_DIR")
+    workspaces_dir = (
+        workspaces_dir
+        or default
+        or pjoin(jupyter_config_path()[0], "lab", "workspaces")
     )
     return osp.realpath(workspaces_dir)
 
@@ -71,24 +75,26 @@ def get_app_dir(default=None):
     """Get the configured JupyterLab app directory.
     """
     # Default to the override environment variable.
-    if os.environ.get('JUPYTERLAB_DIR'):
-        return osp.realpath(os.environ['JUPYTERLAB_DIR'])
+    if os.environ.get("JUPYTERLAB_DIR"):
+        return osp.realpath(os.environ["JUPYTERLAB_DIR"])
 
     # Use the default locations for data_files.
-    app_dir = default or pjoin(sys.prefix, 'share', 'jupyter', 'lab')
+    app_dir = default or pjoin(sys.prefix, "share", "jupyter", "lab")
 
     # Check for a user level install.
     # Ensure that USER_BASE is defined
-    if hasattr(site, 'getuserbase'):
+    if hasattr(site, "getuserbase"):
         site.getuserbase()
-    userbase = getattr(site, 'USER_BASE', None)
+    userbase = getattr(site, "USER_BASE", None)
     if HERE.startswith(userbase) and not app_dir.startswith(userbase):
-        app_dir = pjoin(userbase, 'share', 'jupyter', 'lab')
+        app_dir = pjoin(userbase, "share", "jupyter", "lab")
 
     # Check for a system install in '/usr/local/share'.
-    elif (sys.prefix.startswith('/usr') and not
-          osp.exists(app_dir) and
-          osp.exists('/usr/local/share/jupyter/lab')):
-        app_dir = '/usr/local/share/jupyter/lab'
+    elif (
+        sys.prefix.startswith("/usr")
+        and not osp.exists(app_dir)
+        and osp.exists("/usr/local/share/jupyter/lab")
+    ):
+        app_dir = "/usr/local/share/jupyter/lab"
 
     return osp.realpath(app_dir)

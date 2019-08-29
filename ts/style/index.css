@@ -23,6 +23,10 @@
   min-height: var(--jp-notebook-scroll-padding);
 }
 
+.jp-LabShell #jp-top-panel {
+  min-height: initial;
+}
+
 
 /*-----------------------------------------------------------------------------
 | Presentation Mode (.jp-mod-presentationMode)

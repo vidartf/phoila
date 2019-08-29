@@ -6,11 +6,13 @@
 
 from ._version import __version__, version_info
 
+
 def load_jupyter_server_extension(nb_server_app):
     # Wrap this here to avoid pulling in webapp in a normal run
     from .server_extension import _load_jupyter_server_extension
+
     _load_jupyter_server_extension(nb_server_app)
 
 
 def _jupyter_server_extension_paths():
-    return [{'module': 'phoila'}]
+    return [{"module": "phoila"}]

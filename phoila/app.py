@@ -2,10 +2,11 @@ import json
 import os
 import sys
 
-from jupyter_core.application import JupyterApp
+from .serverapp import ServerApp
 from jupyterlab import labapp
-from notebook.notebookapp import NotebookApp
-from traitlets import Unicode
+from traitlets import List, Unicode, default, observe
+
+from jupyter_server.utils import url_path_join
 
 from ._version import __version__
 from .server_extension import _load_jupyter_server_extension
@@ -23,15 +24,17 @@ phoila install <extension name>    # install an extension
 phoila uninstall <extension name>  # uninstall an extension
 """
 
-class PhoilaApp(NotebookApp):
+
+class PhoilaApp(ServerApp):
     """Base jupyter labextension command entry point"""
+
     name = "phoila"
     version = __version__
-    description = "Work with Phoila JupyterLab extensions"
+    description = "The Phoila application"
     examples = _examples
 
-    default_url = Unicode('/phoila', config=True,
-        help="The default URL to redirect to from `/`"
+    default_url = Unicode(
+        "/phoila", config=True, help="The default URL to redirect to from `/`"
     )
 
     subcommands = dict(
@@ -48,46 +51,72 @@ class PhoilaApp(NotebookApp):
         clean=(PhoilaCleanApp, labapp.LabCleanApp.description.splitlines()[0]),
     )
 
-    def init_server_extensions(self):
-        """Load any extensions specified by config.
+    default_services = List(
+        Unicode(),
+        config=False,  # Not user configurable!
+        help="default services to load",
+        default_value=(
+            "jupyter_server.kernelspecs.handlers",
+            "jupyter_server.services.api.handlers",
+            "jupyter_server.services.config.handlers",
+            "jupyter_server.services.kernels.handlers",
+            "jupyter_server.services.kernelspecs.handlers",
+            "jupyter_server.services.security.handlers",
+            "jupyter_server.services.shutdown",
+        ),
+    )
 
-        Import the module, then call the load_jupyter_server_extension function,
-        if one exists.
+    mathjax_url = Unicode(
+        "",
+        config=True,
+        help="""A custom url for MathJax.js.
+        Should be in the form of a case-sensitive url to MathJax,
+        for example:  /static/components/MathJax/MathJax.js
+        """,
+    )
 
-        If the phoila server extension is not enabled, it will
-        be manually loaded with a warning.
+    @default("mathjax_url")
+    def _default_mathjax_url(self):
+        if not self.enable_mathjax:
+            return u""
+        return "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.6/MathJax.js"
 
-        The extension API is experimental, and may change in future releases.
+    @observe("mathjax_url")
+    def _update_mathjax_url(self, change):
+        new = change["new"]
+        if new and not self.enable_mathjax:
+            # enable_mathjax=False overrides mathjax_url
+            self.mathjax_url = u""
+        else:
+            self.log.info("Using MathJax: %s", new)
+
+    mathjax_config = Unicode(
+        "TeX-AMS-MML_HTMLorMML-full,Safe",
+        config=True,
+        help="""The MathJax.js configuration file that is to be used.""",
+    )
+
+    @observe("mathjax_config")
+    def _update_mathjax_config(self, change):
+        self.log.info("Using MathJax configuration file: %s", change["new"])
+
+    def initialize(self, *args, **kwargs):
+        """Load the extension we need.
         """
-        # Don't load the voila server extension if it is enabled
-        # we will add our own voila handlers
-        if self.nbserver_extensions.get('voila', False):
-            self.nbserver_extensions['voila'] = False
-        super(PhoilaApp, self).init_server_extensions()
-        add_voila_handlers(self)
-        msg = 'phoila server extension not enabled, manually loading...'
-        if not self.nbserver_extensions.get('phoila', False):
-            self.log.warn(msg)
+        super(PhoilaApp, self).initialize(*args, **kwargs)
+        if self.subapp is None:
             _load_jupyter_server_extension(self)
+            add_voila_handlers(self)
 
-
-def _get_core_data_patched():
-    """Get the data for the app template.
-    """
-    with open(os.path.join(HERE, 'staging', 'package.json')) as fid:
-        return json.load(fid)
 
 def main():
-    os.environ['JUPYTERLAB_DIR'] = os.path.join(sys.prefix, 'share', 'jupyter', 'phoila')
-    labextensions.BaseExtensionApp.app_dir = os.environ['JUPYTERLAB_DIR']
-    labapp.LabBuildApp.app_dir = os.environ['JUPYTERLAB_DIR']
-
-    # Patch internal function of jupyterlab for now
-    # TODO: Make this an extension point in lab itself
-    import jupyterlab.commands as commands
-    commands._get_core_data = _get_core_data_patched
+    os.environ["JUPYTERLAB_DIR"] = os.path.join(
+        sys.prefix, "share", "jupyter", "phoila"
+    )
+    labextensions.BaseExtensionApp.app_dir = os.environ["JUPYTERLAB_DIR"]
 
     PhoilaApp.launch_instance()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())

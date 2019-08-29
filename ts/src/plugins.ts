@@ -7,13 +7,24 @@ This module contains code for opening a new voila view.
 
 */
 
-import { JupyterFrontEnd, ILayoutRestorer } from '@jupyterlab/application';
+import {
+  JupyterFrontEnd,
+  JupyterFrontEndPlugin,
+  ILayoutRestorer,
+  IRouter
+} from '@jupyterlab/application';
+
 import {
   DOMUtils,
   ICommandPalette,
   InputDialog,
-  WidgetTracker
+  WidgetTracker,
+  IWindowResolver
 } from '@jupyterlab/apputils';
+
+import * as apputilsExtension from '@jupyterlab/apputils-extension';
+
+import { IStateDB, URLExt } from '@jupyterlab/coreutils';
 import { IRenderMimeRegistry } from "@jupyterlab/rendermime";
 
 import * as base from '@jupyter-widgets/base';
@@ -36,6 +47,10 @@ import { WidgetRegistry } from './registry';
 import { VoilaView } from './widget';
 
 import "../style/index.css";
+
+
+const originalResolver = apputilsExtension.default.find(
+  v => v.provides === IWindowResolver)!;
 
 
 const WIDGET_VIEW_MIMETYPE = 'application/vnd.jupyter.widget-view+json';
@@ -82,7 +97,7 @@ WIDGET_REGISTRY.register({
 });
 
 
-const voilaViewPlugin = {
+const voilaViewPlugin: JupyterFrontEndPlugin<TVoilaTracker> = {
   id: 'phoila:voila-view',
   requires: [IRenderMimeRegistry],
   optional: [ICommandPalette, ILayoutRestorer],
@@ -150,6 +165,79 @@ const voilaViewPlugin = {
 };
 
 
+const singlePattern = /^\/phoila\/single\/([^?]+)/
+
+const magicKey = 'phoila-single-workspace';
+
+const hideSidebarTabCss = `.p-Widget.p-TabBar.jp-SideBar.jp-mod-left {
+  display: none;
+  min-width: 0;
+}`;
+
+
+class CustomResolver implements IWindowResolver {
+  readonly name = magicKey;
+}
+
+/**
+ * Ensure we use our custom workspace name for single mode.
+ */
+const resolver: JupyterFrontEndPlugin<IWindowResolver> = {
+  id: 'phoila:resolver',
+  autoStart: true,
+  provides: IWindowResolver,
+  requires: [JupyterFrontEnd.IPaths, IRouter],
+  activate: async (
+    _: JupyterFrontEnd,
+    paths: JupyterFrontEnd.IPaths,
+    router: IRouter
+  ) => {
+    singlePattern
+    const parsed = URLExt.parse(window.location.href);
+    const path = parsed.pathname!.replace(paths.urls.base, '/');
+    if (singlePattern.test(path)) {
+      return new CustomResolver();
+    }
+    return originalResolver.activate(_, paths, router);
+  }
+};
+
+
+const singleModePlugin: JupyterFrontEndPlugin<void> = {
+  id: 'phoila:single-mode',
+  requires: [IRouter, TVoilaTracker],
+  optional: [IStateDB],
+  activate: (
+    app: JupyterFrontEnd,
+    router: IRouter
+  ) => {
+    const { commands } = app;
+
+    commands.addCommand('phoila:open-single', {
+      execute: async (args) => {
+        const match = (args as IRouter.ILocation).path.match(singlePattern);
+        try {
+          let path = decodeURI(match![1]);
+            await commands.execute('phoila:open-new', { path });
+        } catch (error) {
+          console.warn('Single notebook routing failed.', error);
+        }
+        commands.execute('application:set-mode', { mode: 'single-document' });
+        const style = document.createElement('style');
+        document.head.appendChild(style);
+        (style.sheet as CSSStyleSheet).insertRule(hideSidebarTabCss);
+      }
+    });
+
+    router.register({
+      command: 'phoila:open-single',
+      pattern: singlePattern,
+    });
+  },
+  autoStart: true
+}
+
+
 /**
  * The widget manager provider.
  */
@@ -188,4 +276,10 @@ const standardWidgetManagerPlugin = {
   autoStart: true
 };
 
-export default [voilaViewPlugin, phoilaWidgetManagerPlugin, standardWidgetManagerPlugin];
+export default [
+  voilaViewPlugin,
+  singleModePlugin,
+  resolver,
+  phoilaWidgetManagerPlugin,
+  standardWidgetManagerPlugin
+];
