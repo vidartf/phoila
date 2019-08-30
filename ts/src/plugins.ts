@@ -25,7 +25,7 @@ import {
 import * as apputilsExtension from '@jupyterlab/apputils-extension';
 
 import { IStateDB, URLExt } from '@jupyterlab/coreutils';
-import { IRenderMimeRegistry } from "@jupyterlab/rendermime";
+import { ILatexTypesetter, IRenderMimeRegistry } from "@jupyterlab/rendermime";
 
 import * as base from '@jupyter-widgets/base';
 
@@ -100,14 +100,19 @@ WIDGET_REGISTRY.register({
 const voilaViewPlugin: JupyterFrontEndPlugin<TVoilaTracker> = {
   id: 'phoila:voila-view',
   requires: [IRenderMimeRegistry],
-  optional: [ICommandPalette, ILayoutRestorer],
+  optional: [ICommandPalette, ILayoutRestorer, ILatexTypesetter],
   provides: TVoilaTracker,
   activate: (
     app: JupyterFrontEnd,
     rendermime: IRenderMimeRegistry,
     palette: ICommandPalette | null,
-    restorer: ILayoutRestorer | null
+    restorer: ILayoutRestorer | null,
+    typesetter: ILatexTypesetter | null
   ) => {
+    // Workaround for https://github.com/jupyter-widgets/ipywidgets/issues/2253
+    if (typesetter) {
+      typesetter.typeset(document.createElement('div'));
+    }
     const { commands, shell } = app;
     const tracker = new WidgetTracker<VoilaView>({namespace: 'phoila'});
     commands.addCommand(
