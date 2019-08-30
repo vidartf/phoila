@@ -104,6 +104,12 @@ class PhoilaApp(ServerApp):
         """Load the extension we need.
         """
         super(PhoilaApp, self).initialize(*args, **kwargs)
+        self.kernel_manager.allowed_message_types = [
+            'comm_msg',
+            'comm_info_request',
+            'kernel_info_request',
+            'shutdown_request'
+        ]
         if self.subapp is None:
             _load_jupyter_server_extension(self)
             add_voila_handlers(self)
