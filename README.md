@@ -13,10 +13,10 @@ https://github.com/Quantstack/voila
 
 ## Installation
 
-Download the source code (as zip, or by cloning). Go into the directory with a terminal and run:
+Install using pip:
 
 ```bash
-pip install .
+pip install phoila
 ```
 
 Add any lab extensions you need to phoila:
