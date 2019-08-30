@@ -33,6 +33,15 @@ Then run it:
 phoila
 ```
 
+## Helpful config options
+
+Since all kernels are one-to-one per dashboard, without any magic to
+automatically shut down kernels once the dashboard is closed, it can be
+helpful to configure automatic culling, by configuring
+`MappingKernelManager.cull_idle_timeout` to a value greater than 0.
+This can either be done on invocation `--MappingKernelManager.cull_idle_timeout=300` or in a config file
+(`phoila --generate-config`).
+
 
 ## Components
 
