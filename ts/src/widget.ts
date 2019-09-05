@@ -140,7 +140,12 @@ export class VoilaView extends Widget {
 
   async populateFromPath(path: string) {
     const gen = requestVoila(path);
-    return this.populateFromGenerator(gen);
+    try {
+      return await this.populateFromGenerator(gen);
+    } catch (reason) {
+      const textnode = document.createTextNode(reason);
+      this.node.appendChild(textnode);
+    }
   }
 
   async populateFromGenerator(generator: AsyncIterableIterator<ReadonlyJSONValue>) {
