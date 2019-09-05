@@ -7,9 +7,11 @@ import sys
 import tornado.web
 from traitlets import HasTraits, Bool, Unicode, default
 from jupyter_core.paths import jupyter_config_path
+from jupyter_server.base.handlers import RedirectWithParams
 from jupyterlab.commands import get_app_info
 from jupyterlab_server.handlers import is_url, LabConfig
 from jupyterlab_server.server import url_path_join as ujoin
+from jupyter_server.utils import url_escape
 
 from .lab_handlers import (
     LabHandler,
@@ -90,12 +92,13 @@ def _load_jupyter_server_extension(jupyter_app):
         settings["mathjax_config"] = jupyter_app.mathjax_config
 
     config = load_config(jupyter_app)
-    return add_handlers(jupyter_app.web_app, config)
+    return add_handlers(jupyter_app, config)
 
 
-def add_handlers(web_app, config):
+def add_handlers(jupyter_app, config):
     """Add the appropriate handlers to the web app.
     """
+    web_app = jupyter_app.web_app
     # Normalize directories.
     for name in config.trait_names():
         if not name.endswith("_dir"):
@@ -117,13 +120,30 @@ def add_handlers(web_app, config):
             value = value[:-1]
         setattr(config, name, value)
 
+    handlers = []
+
     # Set up the main page handler and tree handler.
     base_url = web_app.settings.get("base_url", "/")
     app_path = ujoin(base_url, config.app_url)
-    handlers = [
-        (app_path, LabHandler, {"lab_config": config}),
-        #  + notebook_path_regex + '?'
-    ]
+    if jupyter_app.file_to_run:
+        relpath = os.path.relpath(jupyter_app.file_to_run, jupyter_app.root_dir)
+        uri_parts = []
+        if jupyter_app.file_to_run_url:
+            uri_parts.append(jupyter_app.file_to_run_url)
+        uri_parts.extend(relpath.split(os.sep))
+        sinlge_uri = url_escape(ujoin(*uri_parts))
+        handlers.append(
+            (app_path, RedirectWithParams, {
+                "url": sinlge_uri,
+                "permanent": False,  # want 302, not 301
+            })
+            #  + notebook_path_regex + '?'
+        )
+    else:
+        handlers.append(
+            (app_path, LabHandler, {"lab_config": config}) 
+            #  + notebook_path_regex + '?'
+        )
 
     # Cache all or none of the files depending on the `cache_files` setting.
     no_cache_paths = [] if config.cache_files else ["/"]
@@ -131,7 +151,6 @@ def add_handlers(web_app, config):
     # Handle single notebook mode:
     single_mode_path = ujoin(app_path, "single", r".+")
     handlers.append((single_mode_path, LabHandler, {"lab_config": config}))
-    print(single_mode_path)
 
     # Handle local static assets.
     if config.static_dir:
@@ -164,7 +183,8 @@ def add_handlers(web_app, config):
     if config.workspaces_dir:
         # Handle JupyterLab client URLs that include workspaces.
         workspaces_path = ujoin(base_url, config.workspaces_url, r".+")
-        handlers.append((workspaces_path, LabHandler, {"lab_config": config}))
+        if not jupyter_app.file_to_run:
+            handlers.append((workspaces_path, LabHandler, {"lab_config": config}))
 
         workspaces_config = {
             "workspaces_url": config.workspaces_url,

@@ -39,6 +39,7 @@ import os
 import gettext
 
 from jinja2 import Environment, FileSystemLoader
+import tornado
 
 from jupyter_server.utils import url_path_join
 from jupyter_server.base.handlers import path_regex
@@ -64,6 +65,17 @@ class PhoilaHandler(VoilaHandler):
             value = "application/json"
         super(PhoilaHandler, self).set_header(header, value)
 
+
+    @tornado.web.authenticated
+    @tornado.gen.coroutine
+    def get(self, path=None):
+        if (
+            self.notebook_path and path and
+            path.endswith(self.notebook_path)
+        ):  # when we are in single notebook mode but have a path
+            yield from super(PhoilaHandler, self).get()
+            return
+        yield from super(PhoilaHandler, self).get(path)
 
 def add_voila_handlers(server_app):
     web_app = server_app.web_app
@@ -118,45 +130,53 @@ def add_voila_handlers(server_app):
         host_pattern,
         [
             (
-                url_path_join(base_url, r"/voila/render/(.*)"),
-                PhoilaHandler,
-                {
-                    "config": server_app.config,
-                    "nbconvert_template_paths": nbconvert_template_paths,
-                    "voila_configuration": voila_configuration,
-                },
-            ),
-            (url_path_join(base_url, "/voila"), VoilaTreeHandler),
-            (url_path_join(base_url, r"/voila/tree" + path_regex), VoilaTreeHandler),
-            (
                 url_path_join(base_url, r"/voila/static/(.*)"),
                 MultiStaticFileHandler,
                 {"paths": static_paths},
             ),
-            (url_path_join(base_url, r"/voila/files/(.*)"), WhiteListFileHandler),
+            (
+                url_path_join(base_url, r"/voila/files/(.*)"),
+                WhiteListFileHandler,
+                {
+                    'whitelist': voila_configuration.file_whitelist,
+                    'blacklist': voila_configuration.file_blacklist,
+                    'path': os.path.expanduser(web_app.settings['server_root_dir']),
+                },
+            ),
         ],
     )
 
-    # Serving notebook extensions
-    if voila_configuration.enable_nbextensions:
-        # First look into 'nbextensions_path' configuration key (classic notebook)
-        # and fall back to default path for nbextensions (jupyter server).
-        if "nbextensions_path" in web_app.settings:
-            nbextensions_path = web_app.settings["nbextensions_path"]
-        else:
-            nbextensions_path = jupyter_path("nbextensions")
-
+    if server_app.file_to_run:
+        notebook_path = os.path.relpath(server_app.file_to_run, server_app.root_dir)
         web_app.add_handlers(
             host_pattern,
             [
-                # this handler serves the nbextensions similar to the classical notebook
                 (
-                    url_path_join(base_url, r"/voila/nbextensions/(.*)"),
-                    FileFindHandler,
+                    url_path_join(base_url, r"/voila/render/(.*)"),
+                    PhoilaHandler,
                     {
-                        "path": nbextensions_path,
-                        "no_cache_paths": ["/"],  # don't cache anything in nbextensions
+                        'notebook_path': notebook_path,
+                        "config": server_app.config,
+                        "nbconvert_template_paths": nbconvert_template_paths,
+                        "voila_configuration": voila_configuration,
                     },
-                )
+                ),
+            ],
+        )
+    else:
+        web_app.add_handlers(
+            host_pattern,
+            [
+                (
+                    url_path_join(base_url, r"/voila/render/(.*)"),
+                    PhoilaHandler,
+                    {
+                        "config": server_app.config,
+                        "nbconvert_template_paths": nbconvert_template_paths,
+                        "voila_configuration": voila_configuration,
+                    },
+                ),
+                (url_path_join(base_url, "/voila"), VoilaTreeHandler),
+                (url_path_join(base_url, r"/voila/tree" + path_regex), VoilaTreeHandler),
             ],
         )

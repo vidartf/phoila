@@ -691,8 +691,13 @@ class ServerApp(JupyterApp):
         """override default log format to include time"""
         return u"%(color)s[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s]%(end_color)s %(message)s"
 
-    # file to be opened in the Jupyter server
-    file_to_run = Unicode("", config=True)
+    file_to_run = Unicode(
+        "", config=True,
+        help='file to be opened in the Jupyter server')
+
+    file_to_run_url = Unicode(
+        "", config=True,
+        help='url prefix to use for file_to_run')
 
     # Network related information
 
@@ -1184,7 +1189,10 @@ class ServerApp(JupyterApp):
     @property
     def template_file_path(self):
         """return extra paths + the default locations"""
-        return self.extra_template_paths + DEFAULT_TEMPLATE_PATH_LIST
+        template_dirs = [
+            os.path.join(os.path.dirname(__file__), 'templates'),
+        ]
+        return self.extra_template_paths + template_dirs + DEFAULT_TEMPLATE_PATH_LIST
 
     extra_services = List(
         Unicode(),
@@ -1915,7 +1923,11 @@ class ServerApp(JupyterApp):
                     self.exit(1)
 
                 relpath = os.path.relpath(self.file_to_run, self.root_dir)
-                uri = url_escape(url_path_join("notebooks", *relpath.split(os.sep)))
+                uri_parts = []
+                if self.file_to_run_url:
+                    uri_parts.append(self.file_to_run_url)
+                uri_parts.extend(relpath.split(os.sep))
+                uri = url_escape(url_path_join(*uri_parts))
             else:
                 uri = self.base_url
             if self.one_time_token:

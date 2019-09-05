@@ -37,6 +37,10 @@ class PhoilaApp(ServerApp):
         "/phoila", config=True, help="The default URL to redirect to from `/`"
     )
 
+    file_to_run_url = Unicode(
+        '/phoila/single', config=True
+    )
+
     subcommands = dict(
         install=(InstallPhoilaExtensionApp, "Install phoila extension(s)"),
         update=(UpdatePhoilaExtensionApp, "Update phoila extension(s)"),
