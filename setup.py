@@ -38,7 +38,9 @@ lab_path = pjoin(HERE, "ts", "dist")
 # Representative files that should exist after a successful build
 jstargets = [pjoin(js_path, "lib", "plugins.js")]
 
-package_data_spec = {name: ["staging/*.*"]}
+package_data_spec = {
+    name: ["staging/*.*", "templates/*.html"],
+}
 
 data_files_spec = [
     ("", HERE, "etc/**/*"),
