@@ -155,3 +155,7 @@ phoila/labextension/*.tgz
 # Packed lab extensions
 phoila/labextension
 MANIFEST
+
+# lock files
+ts/package-lock.json
+ts/yarn.lock
