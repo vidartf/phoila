@@ -7,8 +7,6 @@ include .coverage.rc
 include MANIFEST.in
 
 include package.json
-include webpack.config.js
-include phoila/labextension/*.tgz
 
 # Documentation
 graft docs
@@ -28,7 +26,6 @@ graft tests
 prune tests/build
 
 # Javascript files
-graft phoila/nbextension
 graft ts
 prune **/node_modules
 prune ts/coverage
