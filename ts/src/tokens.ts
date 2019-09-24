@@ -3,7 +3,7 @@
 
 import { IWidgetRegistryData } from '@jupyter-widgets/base';
 
-import { IWidgetTracker } from '@jupyterlab/apputils';
+import { IWidgetTracker, MainAreaWidget } from '@jupyterlab/apputils';
 
 import { Token } from '@phosphor/coreutils';
 
@@ -34,7 +34,7 @@ interface TPhoilaWidgetRegistry {
 /**
  * A class that tracks voila widgets.
  */
-export interface TVoilaTracker extends IWidgetTracker<VoilaView> {
+export interface TVoilaTracker extends IWidgetTracker<MainAreaWidget<VoilaView>> {
 }
 
 /* tslint:disable */

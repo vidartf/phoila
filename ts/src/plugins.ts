@@ -18,6 +18,7 @@ import {
   DOMUtils,
   ICommandPalette,
   InputDialog,
+  MainAreaWidget,
   WidgetTracker,
   IWindowResolver
 } from '@jupyterlab/apputils';
@@ -43,10 +44,12 @@ import { WidgetRenderer } from '@jupyter-widgets/jupyterlab-manager';
 
 import { TPhoilaWidgetRegistry, TVoilaTracker } from './tokens';
 
+import { ClonedOutputArea } from './clones';
 import { WidgetRegistry } from './registry';
-import { VoilaView } from './widget';
+import { VoilaView, VOLIA_MAINAREA_CLASS } from './widget';
 
 import "../style/index.css";
+import { VoilaSession } from './session';
 
 
 const originalResolver = apputilsExtension.default.find(
@@ -114,12 +117,15 @@ const voilaViewPlugin: JupyterFrontEndPlugin<TVoilaTracker> = {
       typesetter.typeset(document.createElement('div'));
     }
     const { commands, shell } = app;
-    const tracker = new WidgetTracker<VoilaView>({namespace: 'phoila'});
+    const sessions: {[key: string]: VoilaSession} = {};
+    const tracker = new WidgetTracker<MainAreaWidget<VoilaView>>({namespace: 'phoila-views'});
+    const cloneTracker = new WidgetTracker<MainAreaWidget<ClonedOutputArea>>({namespace: 'phoila-clones'});
     commands.addCommand(
       'phoila:open-new', {
         label: 'Open New Voila View',
-        execute: args => {
+        execute: async (args) => {
           const path = args['path'];
+          const editable = args['editable'] as boolean | undefined || true;
           let ppromise: Promise<string>;
           if (!path || typeof path !== 'string') {
             ppromise = InputDialog.getText({
@@ -134,26 +140,84 @@ const voilaViewPlugin: JupyterFrontEndPlugin<TVoilaTracker> = {
           } else {
             ppromise = Promise.resolve(path);
           }
-          void ppromise.then((nbPath) => {
-            // Open voila widget
-            const view = new VoilaView(nbPath, WIDGET_REGISTRY, rendermime);
-            view.id = DOMUtils.createDomID();
-            view.title.label = nbPath;
-            view.title.closable = true;
-            view.title.iconClass = 'jp-VoilaIcon';
-            shell.add(view);
-            tracker.add(view);
+          const nbPath = await ppromise;
+          let session: VoilaSession;
+          if (!sessions[nbPath]) {
+            session = new VoilaSession(nbPath, WIDGET_REGISTRY, rendermime);
+            sessions[nbPath] = session;
+          } else {
+            session = sessions[nbPath];
+          }
+          const existing = tracker.find(w => w.content.session === session);
+          if (existing) {
+            existing.activate();
+            return;
+          }
+          // Open voila widget
+          const view = new VoilaView(session);
+          view.allowDrag = editable;
+          view.id = DOMUtils.createDomID();
+          view.title.label = nbPath;
+          view.title.closable = true;
+          view.title.iconClass = 'jp-VoilaIcon';
+          view.cloned.connect((_, clone) => {
+            cloneTracker.add(clone);
           });
+          const w = new MainAreaWidget({
+            content: view,
+            // Uncomment to await full execution before revealing:
+            // reveal: Promise.all([view.populated, view.connected])
+          });
+          w.addClass(VOLIA_MAINAREA_CLASS);
+          tracker.add(w);
+          shell.add(w);
         }
       }
     );
+
+    commands.addCommand(
+      'phoila:clone-output', {
+        execute: args => {
+          const nbPath = args['notebookPath'] as string
+          let session = sessions[nbPath];
+          if (!session) {
+            session = new VoilaSession(nbPath, WIDGET_REGISTRY, rendermime);
+            sessions[nbPath] = session;
+          }
+          const clone = new ClonedOutputArea({
+            session,
+            index: args['index'] as number
+          });
+
+          const widget = new MainAreaWidget({
+            content: clone,
+            reveal: session.populated,
+          });
+          widget.addClass(VOLIA_MAINAREA_CLASS);
+
+          // Add the cloned output to the output widget tracker.
+          cloneTracker.add(widget);
+          shell.add(widget);
+        }
+      }
+    )
     if (restorer) {
-      restorer.restore(tracker, {
+      void restorer.restore(tracker, {
         command: 'phoila:open-new',
         args: view => ({
-          path: view.notebookPath,
+          path: view.content.session.notebookPath,
         }),
-        name: (view) => view.notebookPath,
+        name: (view) => view.content.session.notebookPath,
+        when: app.serviceManager.ready
+      });
+      void restorer.restore(cloneTracker, {
+        command: 'phoila:clone-output',
+        args: widget => ({
+          notebookPath: widget.content.notebookPath,
+          index: widget.content.index,
+        }),
+        name: widget => `${widget.content.notebookPath}:${widget.content.index}`,
+        when: tracker.restored // After the notebook widgets (but not contents).
       });
     }
 
@@ -223,7 +287,7 @@ const singleModePlugin: JupyterFrontEndPlugin<void> = {
         const match = (args as IRouter.ILocation).path.match(singlePattern);
         try {
           let path = decodeURI(match![1]);
-            await commands.execute('phoila:open-new', { path });
+            await commands.execute('phoila:open-new', { path, editable: false });
         } catch (error) {
           console.warn('Single notebook routing failed.', error);
         }
