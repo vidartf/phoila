@@ -32,6 +32,11 @@
   display: none;
 }
 
+/* Fix scrollbar for linked widget outputs */
+.voila-mainAreaWidget .jp-LinkedOutputView .jupyter-widgets.jp-OutputArea-output:only-child {
+  height: calc(100% - 2 * var(--jp-widgets-margin));
+}
+
 
 /*-----------------------------------------------------------------------------
 | Presentation Mode (.jp-mod-presentationMode)
