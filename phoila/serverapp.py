@@ -41,7 +41,6 @@
 
 from __future__ import absolute_import, print_function
 
-import jupyter_server
 import binascii
 import datetime
 import errno
@@ -65,6 +64,22 @@ import threading
 import time
 import warnings
 import webbrowser
+
+# Workaround while lab code imports notebook code
+# TODO: Remove once lab uses jupyter_server
+import jupyter_server.prometheus.metrics
+import jupyter_server.prometheus.log_functions
+try:
+    import notebook.prometheus
+    import notebook.prometheus.metrics
+    import notebook.prometheus.log_functions
+except ImportError:
+    sys.modules['notebook.metrics'] = sys.modules['jupyter_server.prometheus.metrics']
+    sys.modules['notebook.metrics'].update(sys.modules['jupyter_server.prometheus.log_functions'])
+except ValueError:
+    sys.modules['notebook.prometheus.metrics'] = sys.modules['jupyter_server.prometheus.metrics']
+    sys.modules['notebook.prometheus.log_functions'] = sys.modules['jupyter_server.prometheus.log_functions']
+
 
 try:  # PY3
     from base64 import encodebytes
@@ -116,8 +131,8 @@ try:
 except NameError:
     raw_input = input
 
-from jupyter_server.base.handlers import MainHandler, RedirectWithParams, Template404
-from notebook.log import log_request
+from jupyter_server.base.handlers import RedirectWithParams, Template404
+from jupyter_server.log import log_request
 from jupyter_server.services.kernels.kernelmanager import MappingKernelManager
 from jupyter_server.services.config import ConfigManager
 from jupyter_server.services.contents.manager import ContentsManager
@@ -388,7 +403,7 @@ class ServerWebApplication(web.Application):
         # register base handlers last
         handlers.extend(load_handlers("jupyter_server.base.handlers"))
 
-        if settings["default_url"] != "/":
+        if settings["default_url"] not in ("/", settings["base_url"]):
             # set the URL that will be redirected from `/`
             handlers.append(
                 (
@@ -400,8 +415,6 @@ class ServerWebApplication(web.Application):
                     },
                 )
             )
-        else:
-            handlers.append((r"/", MainHandler))
 
         # prepend base_url onto the patterns that we match
         new_handlers = []
@@ -1442,7 +1455,7 @@ class ServerApp(JupyterApp):
     )
 
     terminals_enabled = Bool(
-        True,
+        False,
         config=True,
         help=_(
             """Set to False to disable terminals.

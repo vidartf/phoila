@@ -25,7 +25,7 @@ import {
 
 import * as apputilsExtension from '@jupyterlab/apputils-extension';
 
-import { IStateDB, URLExt } from '@jupyterlab/coreutils';
+import { IStateDB, URLExt, PageConfig } from '@jupyterlab/coreutils';
 import { ILatexTypesetter, IRenderMimeRegistry } from "@jupyterlab/rendermime";
 
 import * as base from '@jupyter-widgets/base';
@@ -234,7 +234,7 @@ const voilaViewPlugin: JupyterFrontEndPlugin<TVoilaTracker> = {
 };
 
 
-const singlePattern = /^\/phoila\/single\/([^?]+)/
+const singlePattern = /^\/phoila\/single\/([^?]+)/;
 
 const magicKey = 'phoila-single-workspace';
 
@@ -261,10 +261,9 @@ const resolver: JupyterFrontEndPlugin<IWindowResolver> = {
     paths: JupyterFrontEnd.IPaths,
     router: IRouter
   ) => {
-    singlePattern
     const parsed = URLExt.parse(window.location.href);
     const path = parsed.pathname!.replace(paths.urls.base, '/');
-    if (singlePattern.test(path)) {
+    if (PageConfig.getOption('notebook_path') || singlePattern.test(path)) {
       return new CustomResolver();
     }
     return originalResolver.activate(_, paths, router);
@@ -274,20 +273,24 @@ const resolver: JupyterFrontEndPlugin<IWindowResolver> = {
 
 const singleModePlugin: JupyterFrontEndPlugin<void> = {
   id: 'phoila:single-mode',
-  requires: [IRouter, TVoilaTracker],
+  requires: [IRouter, JupyterFrontEnd.IPaths, TVoilaTracker],
   optional: [IStateDB],
   activate: (
     app: JupyterFrontEnd,
-    router: IRouter
+    router: IRouter,
+    paths: JupyterFrontEnd.IPaths,
   ) => {
     const { commands } = app;
 
     commands.addCommand('phoila:open-single', {
       execute: async (args) => {
-        const match = (args as IRouter.ILocation).path.match(singlePattern);
+        let path = PageConfig.getOption('notebook_path');
+        if (!path) {
+          const match = (args as IRouter.ILocation).path.match(singlePattern);
+          path = decodeURI(match![1]);
+        }
         try {
-          let path = decodeURI(match![1]);
-            await commands.execute('phoila:open-new', { path, editable: false });
+          await commands.execute('phoila:open-new', { path, editable: false });
         } catch (error) {
           console.warn('Single notebook routing failed.', error);
         }
@@ -302,6 +305,16 @@ const singleModePlugin: JupyterFrontEndPlugin<void> = {
       command: 'phoila:open-single',
       pattern: singlePattern,
     });
+
+    if (PageConfig.getOption('notebook_path')) {
+      const parsed = URLExt.parse(window.location.href);
+      const path = parsed.pathname!.replace(paths.urls.base, '/');
+      if (path !== '/') {
+        console.warn('Unexpected notebook_path');
+      } else {
+        void commands.execute('phoila:open-single');
+      }
+    }
   },
   autoStart: true
 }

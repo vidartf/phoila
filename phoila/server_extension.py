@@ -32,7 +32,8 @@ WORKSPACES_DIR_DEFAULT = pjoin(jupyter_config_path()[0], "phoila", "workspaces")
 
 
 def load_config(nbapp):
-    config = LabConfig(app_url="/phoila", tree_url="/voila/tree")
+    app_url = '/' if nbapp.file_to_run else '/phoila'
+    config = LabConfig(app_url=app_url, tree_url="/voila/tree")
     app_dir = getattr(nbapp, "app_dir", get_app_dir(default=APP_DIR_DEFAULT))
 
     info = get_app_info(app_dir)
@@ -120,37 +121,40 @@ def add_handlers(jupyter_app, config):
             value = value[:-1]
         setattr(config, name, value)
 
+    lab_settings = {"lab_config": config}
+    if jupyter_app.file_to_run:
+        page_config = web_app.settings.setdefault('page_config_data', {})
+        page_config.setdefault('notebook_path', jupyter_app.file_to_run)
+
     handlers = []
 
     # Set up the main page handler and tree handler.
     base_url = web_app.settings.get("base_url", "/")
     app_path = ujoin(base_url, config.app_url)
-    if jupyter_app.file_to_run:
-        relpath = os.path.relpath(jupyter_app.file_to_run, jupyter_app.root_dir)
-        uri_parts = []
-        if jupyter_app.file_to_run_url:
-            uri_parts.append(jupyter_app.file_to_run_url)
-        uri_parts.extend(relpath.split(os.sep))
-        sinlge_uri = url_escape(ujoin(*uri_parts))
+    handlers.append(
+        (app_path, LabHandler, {"lab_config": config}) 
+        #  + notebook_path_regex + '?'
+    )
+    if config.app_url != '/':
+        # set the URL that will be redirected from `/`
         handlers.append(
-            (app_path, RedirectWithParams, {
-                "url": sinlge_uri,
-                "permanent": False,  # want 302, not 301
-            })
-            #  + notebook_path_regex + '?'
-        )
-    else:
-        handlers.append(
-            (app_path, LabHandler, {"lab_config": config}) 
-            #  + notebook_path_regex + '?'
+            (
+                r"/?",
+                RedirectWithParams,
+                {
+                    "url": app_path,
+                    "permanent": False,  # want 302, not 301
+                },
+            )
         )
 
     # Cache all or none of the files depending on the `cache_files` setting.
     no_cache_paths = [] if config.cache_files else ["/"]
 
-    # Handle single notebook mode:
-    single_mode_path = ujoin(app_path, "single", r".+")
-    handlers.append((single_mode_path, LabHandler, {"lab_config": config}))
+    if not jupyter_app.file_to_run:
+        # Handle single notebook mode:
+        single_mode_path = ujoin(app_path, "single", r".+")
+        handlers.append((single_mode_path, LabHandler, {"lab_config": config}))
 
     # Handle local static assets.
     if config.static_dir:

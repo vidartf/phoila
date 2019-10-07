@@ -33,14 +33,6 @@ class PhoilaApp(ServerApp):
     description = "The Phoila application"
     examples = _examples
 
-    default_url = Unicode(
-        "/phoila", config=True, help="The default URL to redirect to from `/`"
-    )
-
-    file_to_run_url = Unicode(
-        '/phoila/single', config=True
-    )
-
     subcommands = dict(
         install=(InstallPhoilaExtensionApp, "Install phoila extension(s)"),
         update=(UpdatePhoilaExtensionApp, "Update phoila extension(s)"),
@@ -118,6 +110,8 @@ class PhoilaApp(ServerApp):
             if self.subapp is None:
                 _load_jupyter_server_extension(self)
                 add_voila_handlers(self)
+                # Clear this, as we run things differently:
+                self.file_to_run = ''
 
 
 def main():

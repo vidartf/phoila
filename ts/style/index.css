@@ -46,3 +46,7 @@
   --jp-content-font-size1: var(--jp-content-presentation-font-size1);
   --jp-code-font-size: var(--jp-code-presentation-font-size);
 }
+
+#jp-main-dock-panel[data-mode="single-document"] {
+  padding: 0;
+}
