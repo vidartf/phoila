@@ -11,7 +11,8 @@ import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin,
   ILayoutRestorer,
-  IRouter
+  IRouter,
+  ILabShell,
 } from '@jupyterlab/application';
 
 import {
@@ -42,6 +43,8 @@ import {
 
 import { WidgetRenderer } from '@jupyter-widgets/jupyterlab-manager';
 
+import { UUID } from '@phosphor/coreutils';
+
 import { TPhoilaWidgetRegistry, TVoilaTracker } from './tokens';
 
 import { ClonedOutputArea } from './clones';
@@ -50,10 +53,15 @@ import { VoilaView, VOLIA_MAINAREA_CLASS } from './widget';
 
 import "../style/index.css";
 import { VoilaSession } from './session';
+import { each } from '@phosphor/algorithm';
+import { TabBar, Widget } from '@phosphor/widgets';
 
 
 const originalResolver = apputilsExtension.default.find(
   v => v.provides === IWindowResolver)!;
+
+
+const editPattern = /^\/phoila\/(?!single).+\?(.*&)*edit(&.*)*/
 
 
 const WIDGET_VIEW_MIMETYPE = 'application/vnd.jupyter.widget-view+json';
@@ -238,11 +246,6 @@ const singlePattern = /^\/phoila\/single\/([^?]+)/;
 
 const magicKey = 'phoila-single-workspace';
 
-const hideSidebarTabCss = `.p-Widget.p-TabBar.jp-SideBar.jp-mod-left {
-  display: none;
-  min-width: 0;
-}`;
-
 
 class CustomResolver implements IWindowResolver {
   readonly name = magicKey;
@@ -295,9 +298,6 @@ const singleModePlugin: JupyterFrontEndPlugin<void> = {
           console.warn('Single notebook routing failed.', error);
         }
         commands.execute('application:set-mode', { mode: 'single-document' });
-        const style = document.createElement('style');
-        document.head.appendChild(style);
-        (style.sheet as CSSStyleSheet).insertRule(hideSidebarTabCss);
       }
     });
 
@@ -314,6 +314,156 @@ const singleModePlugin: JupyterFrontEndPlugin<void> = {
       } else {
         void commands.execute('phoila:open-single');
       }
+    }
+  },
+  autoStart: true
+}
+
+
+const autoNewWorkspacePlugin: JupyterFrontEndPlugin<void> = {
+  id: 'phoila:auto-edit',
+  requires: [IRouter, JupyterFrontEnd.IPaths, TVoilaTracker],
+  optional: [ICommandPalette, IStateDB],
+  activate: (
+    app: JupyterFrontEnd,
+    router: IRouter,
+    paths: JupyterFrontEnd.IPaths,
+    voilaTracker: TVoilaTracker,
+    palette: ICommandPalette | null
+  ) => {
+    const { commands } = app;
+
+    commands.addCommand('phoila:new-workspace', {
+      label: 'New Dashboard',
+      caption: 'Generate a new, automatically named workspace',
+      execute: async (args) => {
+        router.navigate(`${
+          URLExt.join(
+            paths.urls.workspaces,
+            UUID.uuid4()
+          )}?edit`, {
+            hard: true
+          });
+      }
+    });
+
+    if (palette) {
+      palette.addItem({
+        command: 'phoila:new-workspace',
+        category: 'Voila',
+      })
+    }
+
+    router.register({
+      command: 'phoila:new-workspace',
+      pattern: /^\/phoila(|\?.*)$/,
+    });
+  },
+  autoStart: true
+}
+
+
+const editModePlugin: JupyterFrontEndPlugin<void> = {
+  id: 'phoila:edit-mode',
+  requires: [IRouter, JupyterFrontEnd.IPaths, TVoilaTracker],
+  optional: [ICommandPalette, ILabShell, IStateDB],
+  activate: (
+    app: JupyterFrontEnd,
+    router: IRouter,
+    paths: JupyterFrontEnd.IPaths,
+    tracker: TVoilaTracker,
+    palette: ICommandPalette | null,
+    labShell: ILabShell | null,
+  ) => {
+    const { commands } = app;
+
+    function toggleTabBars(visible: boolean): void {
+      // TODO: This is a dirty hack!
+      if (visible) {
+        each((app as any).shell._dockPanel.tabBars(), (tabbar: TabBar<Widget>) => {
+          tabbar.show();
+        });
+      } else {
+        each((app as any).shell._dockPanel.tabBars(), (tabbar: TabBar<Widget>) => {
+          tabbar.hide();
+        });
+      }
+    }
+
+    function toggleEditQueryString(value: boolean) {
+      let {pathname, search, hash} = URLExt.parse(window.location.href);
+      path = pathname!.replace(paths.urls.base, '/');
+      const params = (search || '').replace(/^\?/, '')
+        .split('&');
+      const idx = params.indexOf('edit');
+      if ((idx !== -1) === value) {
+        // Already in right state
+        return;
+      }
+      if (value) {
+        params.push('edit');
+      } else {
+        params.splice(idx, 1);
+      }
+      router.navigate(`${path}?${params.join('&')}${hash}`);
+    }
+
+    commands.addCommand('phoila:toggle-edit-mode', {
+      label: 'Edit Mode',
+      isToggled: () => editMode,
+      execute: async () => {
+        editMode = !editMode;
+        app.shell.toggleClass('phoila-mod-editMode', editMode);
+        toggleTabBars(editMode);
+        toggleEditQueryString(editMode);
+        tracker.forEach(view => {
+          view.content.allowDrag = editMode;
+        });
+        app.shell.fit();
+      }
+    });
+
+    let parsed = URLExt.parse(window.location.href);
+    let path = parsed.pathname!.replace(paths.urls.base, '/');
+    const request = path + parsed.search + parsed.hash;
+    let editMode = editPattern.test(request);
+    if (editMode) {
+      app.shell.addClass('phoila-mod-editMode');
+    }
+
+    tracker.restored.then(() => {
+      tracker.forEach(view => {
+        view.content.allowDrag = editMode;
+      });
+    });
+
+    app.restored.then(() => {
+      if (!editMode) {
+        toggleTabBars(false);
+        if (labShell) {
+          // Ensure side-bars are collapsed
+          labShell.restoreLayout({
+            leftArea: {
+              collapsed: true,
+              widgets: null,
+              currentWidget: null
+            },
+            rightArea: {
+              collapsed: true,
+              widgets: null,
+              currentWidget: null
+            },
+            mainArea: null
+          })
+        }
+      }
+    });
+
+    if (palette) {
+      palette.addItem({
+        command: 'phoila:toggle-edit-mode',
+        category: 'Voila',
+      })
     }
   },
   autoStart: true
@@ -361,6 +511,8 @@ const standardWidgetManagerPlugin = {
 export default [
   voilaViewPlugin,
   singleModePlugin,
+  editModePlugin,
+  autoNewWorkspacePlugin,
   resolver,
   phoilaWidgetManagerPlugin,
   standardWidgetManagerPlugin
