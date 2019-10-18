@@ -4,5 +4,5 @@
 # Copyright (c) Vidar Tonaas Fauske.
 # Distributed under the terms of the Modified BSD License.
 
-version_info = (0, 2, 1, 'dev')
+version_info = (0, 3, 0, 'final')
 __version__ = ".".join(map(str, version_info))
