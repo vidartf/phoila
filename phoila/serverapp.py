@@ -88,7 +88,7 @@ except ValueError:
         sys.modules['notebook.prometheus.log_functions'] = sys.modules['jupyter_server.prometheus.log_functions']
     except:
         raise RuntimeError(
-            'Cannot use a recent version of jupyter_server with an old version of notebook'
+            'Cannot use an older version of jupyter_server with a newer version of notebook'
         )
 
 try:  # PY3
