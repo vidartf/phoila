@@ -67,19 +67,29 @@ import webbrowser
 
 # Workaround while lab code imports notebook code
 # TODO: Remove once lab uses jupyter_server
-import jupyter_server.prometheus.metrics
-import jupyter_server.prometheus.log_functions
+try:
+    import jupyter_server.prometheus.metrics
+    import jupyter_server.prometheus.log_functions
+except ImportError:
+    import jupyter_server.metrics
 try:
     import notebook.prometheus
     import notebook.prometheus.metrics
     import notebook.prometheus.log_functions
 except ImportError:
-    sys.modules['notebook.metrics'] = sys.modules['jupyter_server.prometheus.metrics']
-    sys.modules['notebook.metrics'].update(sys.modules['jupyter_server.prometheus.log_functions'])
+    try:
+        sys.modules['notebook.metrics'] = sys.modules['jupyter_server.metrics']
+    except KeyError:
+        sys.modules['notebook.metrics'] = sys.modules['jupyter_server.prometheus.metrics']
+        sys.modules['notebook.metrics'].update(sys.modules['jupyter_server.prometheus.log_functions'])
 except ValueError:
-    sys.modules['notebook.prometheus.metrics'] = sys.modules['jupyter_server.prometheus.metrics']
-    sys.modules['notebook.prometheus.log_functions'] = sys.modules['jupyter_server.prometheus.log_functions']
-
+    try:
+        sys.modules['notebook.prometheus.metrics'] = sys.modules['jupyter_server.prometheus.metrics']
+        sys.modules['notebook.prometheus.log_functions'] = sys.modules['jupyter_server.prometheus.log_functions']
+    except:
+        raise RuntimeError(
+            'Cannot use an older version of jupyter_server with a newer version of notebook'
+        )
 
 try:  # PY3
     from base64 import encodebytes
