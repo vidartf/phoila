@@ -11,6 +11,8 @@ https://github.com/phosphorjs/phosphor/
 
 https://github.com/Quantstack/voila
 
+![Screencast](./screen.gif)
+
 ## Installation
 
 Install using pip:
